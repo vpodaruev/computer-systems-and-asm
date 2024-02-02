@@ -1,0 +1,74 @@
+% !TEX encoding   = UTF8
+% !TEX spellcheck = ru_RU
+
+\documentclass[a4paper,12pt,oneside,openany,final]{memoir}
+
+\input{common/packages}
+\input{common/biblatex}
+
+\input{common/setup}
+\input{setup}
+
+\renewcommand*\paperSubject{\href{\latexurl}{\TeX}нические материалы семинаров}
+
+\input{common/styles}
+\input{styles}
+
+
+\addbibresource{references.bib}
+
+
+
+
+\begin{document}
+
+\input{common/title}
+
+\frontmatter
+%%==========
+\input{common/contents}
+
+
+\begin{pycode}
+from sympy import *
+
+def show_answer () :
+  print (r"\renewcommand*{\showans}[1]{#1}")
+\end{pycode}
+
+%\pyc{show_answer()}
+
+\newlist{exercise}{enumerate}{1}
+\setlist[exercise,1]{label={\arabic*.}, ref={\arabic*}, labelindent=0pt, widest={99}, itemsep=0.5em, topsep=0.5em}
+
+
+\include{intro}
+
+\mainmatter
+%%=========
+\include{sem01/gates_and_boolean_algebra}
+\include{sem02/basic_digital_logic_circuits}
+%\include{asm/03/finite_state_machines}
+%\include{asm/04/data_representation}
+%\include{asm/05/machine_level}
+%\include{asm/06/accessing_information}
+%\include{asm/07/arithmetical_logical_operations}
+%\include{asm/08/control_flow}
+%\include{asm/09/conditional}
+%\include{asm/10/switch}
+%\include{asm/11/procedures}
+%\include{asm/12/arrays_and_structures}
+%\include{asm/13/linking}
+%\include{asm/14/architecture}
+
+
+\backmatter
+%%=========
+\input{common/references}
+
+
+\appendix
+%========
+\include{appendix}
+
+\end{document}
