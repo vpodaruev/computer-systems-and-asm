@@ -1,0 +1,17 @@
+aya -> yaa
+bya -> yab
+cya -> yac
+ayb -> yba
+byb -> ybb
+cyb -> ybc
+ayc -> yca
+byc -> ycb
+cyc -> ycc
+ya -> a
+yb -> b
+yc -> c
+xa -> yax
+xb -> ybx
+xc -> ycx
+x =>
+  -> x
