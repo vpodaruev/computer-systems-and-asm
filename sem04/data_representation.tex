@@ -1,0 +1,203 @@
+% !TEX encoding   = UTF8
+% !TEX spellcheck = ru_RU
+% !TEX root = ../seminars.tex
+
+%%==================================
+\chapter{Представление данных в ЭВМ}
+%%==================================
+
+%%===============================
+\section{Числа конечной точности}
+%%===============================
+\vspace{-1\baselineskip}\begin{multicols}{2}\raggedcolumns\columnseprule=0.1pt
+  Память компьютера ограничена, поэтому возможно иметь дело только с~такими числами, которые можно представить в~фиксированном количестве разрядов:
+  \[
+    000,~001,~002,~\ldots,~999
+  \]
+  Сюда не~входят:
+  \begin{itemfeature}
+    \item числа большие \(999\)
+    \item отрицательные числа
+    \item дроби
+    \item иррациональные числа
+    \item комплексные числа
+  \end{itemfeature}
+  Свойство замкнутости множества целых чисел:
+  \[
+    \forall i,j \in \mathbb N :\quad i+j, i-j, i\times j \in \mathbb N
+  \]
+  Числа конечной точности незамкнуты относительно всех четырёх операций:
+  \begin{center}\begin{tabular}{l>{\small}l}
+    \(600 + 600 = 1200\) & слишком большое число \\
+    \(003 - 005 = -2\)   & отрицательное число \\
+    \(050 + 050 = 2500\) & слишком большое число \\
+    \(007 / 002 = 3.5\)  & нецелое число \\
+  \end{tabular}\end{center}
+  Ошибки делятся на~два класса:
+  \begin{itemfeature}
+    \item ошибки переполнения и ошибки потери значимости
+    \item результат не~является членом ряда
+  \end{itemfeature}
+\end{multicols}
+
+\noindent Законы алгебры для~чисел конечной точности выполняются не~всегда:
+\begin{center}\begin{tabular}{lll}
+  \(a + (b - c) = (a + b) - c\) & \(700 + (400 - 300) \neq (700 + 400) - 300\) & сочетательный з-н \\
+  \(a\times (b - c) = a\times b - a\times c\) & \(5\times (210 - 195) \neq 5\times 210 - 5\times 195\) & распределительный з-н \\
+\end{tabular}\end{center}
+
+
+
+%%=================================
+\section{Отрицательные целые числа}
+%%=================================
+Системы представления отрицательных \(m\)-разрядных чисел:
+\begin{enumerate}
+\item со~знаком
+\item дополнение до~единицы
+\item дополнение до~двух (одно представление нуля: \(+0\), но ряд несимметричен, \(10\ldots0 \to 10\ldots0\))
+\item со~смещением на~\(2^{m-1}\)
+\end{enumerate}
+
+
+
+%%================================
+\section{Числа с~плавающей точкой}
+%%================================
+Экспоненциальная форма: \(n = f\times 10^{e}\). Область значений определяется числом разрядов в~экспоненте~\(e\), а точность~--- числом разрядов в~мантиссе~\(f\).
+
+Для~хранения чисел в~диапазоне \(0.1 \leqslant |f| < 1\) с~трёхразрядной мантиссой со~знаком и двухразрядной экспонентой со~знаком требуется всего~5 разрядов и~2 знака. Характерные промежутки на~числовой оси:
+\begin{center}\begin{tabular}{rl}
+  \((-\infty, -0.999\times 10^{99})\)               & отрицательное переполнение \\[5pt]
+  \([-0.999\times 10^{99}, -0.100\times 10^{-99}]\) & выражаемые отрицательные числа \\[5pt]
+  \((-0.100\times 10^{-99}, 0)\)                    & отрицательная потеря значимости \\[5pt]
+  \(0\)                                             & нуль \\[5pt]
+  \((0, +0.100\times 10^{-99})\)                    & положительная потеря значимости \\[5pt]
+  \([+0.100\times 10^{-99}, +0.999\times 10^{99}]\) & выражаемые положительные числа \\[5pt]
+  \((+0.999\times 10^{99}, +\infty)\)               & положительное переполнение \\
+\end{tabular}\end{center}
+
+Числа не~формируют континуума. Приходится выполнять \emph{округление}. Плотность представляемых чисел разная, но \emph{относительная погрешность} примерно одинаковая.
+
+
+
+%%===========================================
+\section{Стандарт \texttt{IEEE}~\texttt{754}}
+%%===========================================
+\noindent\begin{tikzpicture}[bit/.style={inner sep=2pt, font=\footnotesize\ttfamily},
+                             num/.style={rectangle, draw, minimum height=6mm, font=\slshape}]
+  \node[num, inner xsep=1pt] (signf) {\footnotesize\(\pm\)};
+  \node[bit, above=0pt of signf] {1};
+
+  \node[num] (ef) [right=0pt of signf, text width=16mm, align=center] {эксп.};
+  \node[bit, above=0.5pt of ef] {8};
+
+  \node[num] (mf) [right=0pt of ef, text width=46mm, align=center] {мантисса};
+  \node[bit, above=0.5pt of mf] {23};
+
+  \node[right=3mm of mf] (labf) {одинарная точность};
+  \node[bit, above=2pt of labf] {\textbf{32}~бита};
+
+
+  \node[num, inner xsep=1pt] (signd) [below=6mm of signf] {\footnotesize\(\pm\)};
+  \node[bit, above=0pt of signd] {1};
+
+  \node[num] (ed) [right=0pt of signd, text width=22mm, align=center] {эксп.};
+  \node[bit, above=0.5pt of ed] {11};
+
+  \node[num] (md) [right=0pt of ed, text width=104mm, align=center] {мантисса};
+  \node[bit, above=0.5pt of md] {52};
+
+  \node[right=3mm of md] (labd) {двойная точность};
+  \node[bit, above=2pt of labd] {\textbf{64}~бита};
+\end{tikzpicture}
+
+\bigskip
+Оба формата начинаются со~знакового бита для~всего числа; \texttt{0} указывает на~положительное число, \texttt{1}~--- на~отрицательное. Затем следует смещённая экспонента. Для~формата одинарной точности смещение равно~\(127\), а для~формата двойной точности~--- \(1023\). Минимальная~(\(0\)) и максимальная~(\(255\) и~\(2047\)) экспоненты не~используются для~нормализованных чисел. В~конце идёт мантисса.
+
+\bigskip\hangindent=0.3cm\hangafter=0\noindent
+{\newcommand{\numrow}[3]{%
+\begin{tabular}{@{}p{5.2cm}|@{}p{3mm}@{}|p{3cm}|p{7.5cm}|}
+  \cline{2-4}
+  \hfill #1\rule{0pt}{12pt} & \footnotesize $\pm$ & \hfill #2 & \hfill #3 \\
+  \cline{2-4}
+\end{tabular}}%
+\numrow{  нормализованное число}{\(0 < Exp < Max\)}{          любой набор битов}\\[2pt]
+\numrow{ненормализованное число}{            \(0\)}{любой ненулевой набор битов}\\[2pt]
+\numrow{                   нуль}{            \(0\)}{                      \(0\)}\\[2pt]
+\numrow{          бесконечность}{   \(111\ldots1\)}{                        \(0\)}\\[2pt]
+\numrow{               не~число}{   \(111\ldots1\)}{любой ненулевой набор битов}
+}
+
+
+
+%%================
+\WhatToReadSection
+%%================
+\begin{tabular}{@{}l@{}}
+  \citeauthor[глава~1 стр.~24--50; глава~5 стр.~639--652]{Harris:2015:ru} \\
+  \citeauthor[приложения А и Б стр.~708--728]{Tanenbaum:2013:ru}
+\end{tabular}
+
+
+
+%%===============
+\ExercisesSection
+%%===============
+\begin{exercise}
+\newcommand{\taskcol}[2]{%
+  \small%
+  \begin{tabular}[t]{@{}l@{}}
+  \texttt{#1} \\
+  {[Ответ: \texttt{#2}\textsubscript{16}]}
+  \end{tabular}%
+}
+\item Даны десятичные дроби. Представьте их в~формате стандарта \name{IEEE} для~чисел с~плавающей точкой одинарной точности и запишите результат восемью шестнадцатеричными разрядами.
+
+\smallskip
+\noindent\begin{enumissue*}[itemjoin=\hfill]
+  \item \taskcol  {9.0}{41100000}
+  \item \taskcol {5/32}{3E200000}
+  \item \taskcol{-5/32}{BE200000}
+  \item \taskcol{6.125}{40C40000}
+\end{enumissue*}
+
+
+\renewcommand{\taskcol}[2]{%
+  \small%
+  \begin{tabular}[t]{@{}l@{}}
+  \texttt{#1}\textsubscript{16} \\
+  {[Ответ: \texttt{#2}]}
+  \end{tabular}%
+}
+\item Даны числа в~формате стандарта \texttt{IEEE} для~чисел с~плавающей точкой одинарной точности записанные восемью шестнадцатеричными разрядами. Запишите их в~виде десятичных дробей.
+
+\smallskip
+\noindent\begin{enumissue*}[itemjoin=\hfill]
+  \item \taskcol{42E28000}{113.25}
+  \item \taskcol{3F880000}{1.0625}
+  \item \taskcol{00800000}{1.17549e-38}
+  \item \taskcol{C7F00000}{-122880.0}
+\end{enumissue*}
+
+
+\item Чему равно значение переменной~\code{a} после выполнения следующего оператора?
+
+\cpp/double a = (1. + 1.e-20) - 1.;/
+
+Объясните полученный результат.
+
+
+\item Дано рекуррентное соотношение:
+\[
+x_1 = \frac{1}{e},~x_k = 1 - kx_{k-1},\quad k = 2, 3, 4, \ldots
+\]
+\begin{enumissue}
+  \item\hard Докажите, что \(\forall k\in \mathbb N:~x_k > 0\).
+
+  \item Напишите программу, которая вычисляет первые \(15\) чисел с~одинарной точностью и выводит их на~экран.
+
+  \item Объясните противоречие между первыми двумя пунктами.
+\end{enumissue}
+
+\end{exercise}
