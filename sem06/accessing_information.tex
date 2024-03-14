@@ -1,0 +1,350 @@
+% !TEX encoding   = UTF8
+% !TEX spellcheck = ru_RU
+% !TEX root = ../seminars.tex
+
+%%=======================
+\chapter{Доступ к~данным}
+%%=======================
+
+%%============================================
+\section{Структура модуля на~языке ассемблера}
+%%============================================
+\begin{gascode*}{linenos=false, frame=single}
+  .globl   var       # declare var to be visible outside the module
+  .bss               # specific [data] section: better-save-space
+var:                 # a [label]
+  .zero    4         # store 4 bytes, filled by zeroes
+
+  .data              # [data] section
+var2:
+  .byte    'a'       # store byte, filled with ASCII code of symbol 'a'
+var3:
+  .long    4         # store 4 bytes, filled with an integer 4
+
+  .text              # [code] section
+func:
+  mnemonic [op1[, op2[, op3]]]  # an [instruction] format
+  # ...
+                     # an [empty line] at the end
+\end{gascode*}
+
+
+
+%%================
+\section{Регистры}\label{sect:registers}
+%%================
+{% registers
+\newcommand{\bits}{%
+  \tiny\begin{tabular}{p{6cm}p{3cm}p{1.5cm}@{}@{}p{1.5cm}}
+    63\hfill & 31 & 15\hfill & ~7\hfill 0 \\
+  \end{tabular}}%
+%
+\newcommand{\cpuReg}[5]{% CPU register
+  \begin{tabular}{|p{6cm}|p{3cm}|p{1.5cm}@{}|@{}p{1.5cm}|l}
+    \cline{1-4}
+    \rule{0pt}{12pt}%
+    #1\hfill & #2\hfill & #3 & ~\hfil#4\hfil & \sffamily --\hspace{0.5em}\slshape #5 \\
+    \cline{1-4}
+  \end{tabular}}%
+%
+\newcommand{\cpuRegGPe}[2]{% i386 general-purpose CPU register
+  \cpuReg{\%r#1x}{\%e#1x}{\%#1x}{\%#1l}{#2}%
+}%
+\newcommand{\cpuRegSPe}[2]{% i386 specific-purpose CPU register
+  \cpuReg{\%r#1}{\%e#1}{\%#1}{\%#1l}{#2}%
+}%
+\newcommand{\cpuRegGPr}[2]{% x86-64 general-purpose CPU register
+  \cpuReg{\%r#1}{\%r#1d}{\%r#1w}{\%r#1b}{#2}%
+}%
+\newcommand{\cpuRegSPr}[2]{% x86-64 specific-purpose CPU register
+  \cpuReg{\%r#1}{\%e#1}{\%#1}{}{#2}%
+}%
+\ttfamily\small\begin{tabbing}
+  \hspace{-0.5cm}\=\bits \\
+  \>\cpuRegGPe{a}{accumulator, return value} \\[0.2em]
+  \>\cpuRegGPe{b}{base, callee saved} \\[0.2em]
+  \>\cpuRegGPe{c}{counter, 4th arg.} \\[0.2em]
+  \>\cpuRegGPe{d}{data, 3rd arg.} \\[0.5em]
+  %
+  \>\cpuRegSPe{si}{source index, 2nd arg.} \\[0.2em]
+  \>\cpuRegSPe{di}{destination index, 1st arg.} \\[0.2em]
+  \>\cpuRegSPe{bp}{base pointer, callee saved} \\[0.2em]
+  \>\cpuRegSPe{sp}{stack pointer} \\[0.5em]
+  %
+  \>\cpuRegGPr {8}{5th arg.} \\[0.2em]
+  \>\cpuRegGPr {9}{6th arg.} \\[0.2em]
+  \>\cpuRegGPr{10}{caller saved} \\[0.2em]
+  \>\cpuRegGPr{11}{caller saved} \\[0.5em]
+  %
+  \>\cpuRegGPr{12}{callee saved} \\[0.2em]
+  \>\cpuRegGPr{13}{callee saved} \\[0.2em]
+  \>\cpuRegGPr{14}{callee saved} \\[0.2em]
+  \>\cpuRegGPr{15}{callee saved} \\[1em]
+  %
+  \>\color{gray}\cpuRegSPr{ip}{instruction pointer} \\[0.2em]
+  \>\color{gray}\cpuRegSPr{flags}{condition flags}
+\end{tabbing}
+}% registers
+
+В~64-разрядном режиме\footcite[3.4.1.1
+General-Purpose Registers in~64-Bit Mode]{Intel-v1:2014:en}, размер операнда определяет количество действительных бит в~регистре"~приёмнике:
+\begin{itemfeature}
+  \item 64-битные операнды порождают 64-битный результат в~регистре"~приёмнике.
+  \item 32-битные операнды порождают 32-битный результат, дополняемый нулями до~64-битного значения в регистре"~приёмнике.
+  \item 8-~и 16-битные операнды порождают 8-~и 16-битные результаты. Старшие 56~или 48~бит, соответственно, в~регистре"~приёмнике остаются без~изменений. Если 8-~или 16-разрядная операция планируется для~вычисления 64-разрядного адреса, то необходимо в~явном виде дополнить знаковым битом до~полного 64-битного регистра.
+\end{itemfeature}
+
+
+
+%%=======================
+\section{Формы операндов}
+%%=======================
+\begin{flushleft}
+\newcommand*{\E}[1]{r\ensuremath{_{\text{#1}}}}%
+\newcommand*{\by}{\ensuremath{\cdot}}%
+%
+\small\noindent\begin{tabular}{@{}l>{\ttfamily}l>{\ttfamily}ll@{}}
+  \toprule
+  Тип       & \textrm{Форма}     & \textrm{Значение операнда}     & Адресация \\
+  \midrule
+  константа & \$Imm              & Imm                            & непосредственная \\[0.5em]
+
+  регистр   & \E{a}              & R[\E{a}]                       & регистровая \\[0.5em]
+
+  память    & Imm                & M[Imm]                         & абсолютная \\
+  память    &    (\E{a})         &     M[R[\E{a}]]                & косвенная \\
+  память    & Imm(\E{b})         & M[Imm+R[\E{b}]]                & по~базе со~смещением \\
+  память    & Imm(\E{b},\E{i})   & M[Imm+R[\E{b}]+R[\E{i}]]       & индексная \\
+  память    & Imm(\E{b},\E{i},s) & M[Imm+R[\E{b}]+R[\E{i}]\by{s}] & индексная с~масштабированием \\
+  \bottomrule
+\end{tabular}\end{flushleft}
+
+Положим, что в~перечисленных ниже адресах памяти и регистрах сохранены указанные значения. Заполните таблицу, вычислив значения операндов.
+\begin{center}
+  \ttfamily\small
+  \begin{tabular}[t]{@{}ll@{}}
+    \textrm{Адрес} & \textrm{Значение} \\
+    \midrule
+    0x100 & 0xFF \\
+    0x104 & 0xAB \\
+    0x108 & 0x13 \\
+    0x10C & 0x11 \\[0.8em]
+
+    \textrm{Регистр} & \textrm{Значение} \\
+    \midrule
+    \%rax & 0x100 \\
+    \%rcx &   0x1 \\
+    \%rdx &   0x3 \\
+  \end{tabular}\hspace{3cm}
+  %
+  \newcommand*{\ans}[1]{\ansfw{1.5cm}{#1}}%
+  %
+  \begin{tabular}[t]{@{}ll@{}}
+    \textrm{Операнд} & \textrm{Значение} \\
+    \midrule
+               \%rax & \ans{0x100} \\
+               0x104 & \ans{0xAB} \\
+             \$0x108 & \ans{0x108} \\
+             (\%rax) & \ans{0xFF} \\
+            4(\%rax) & \ans{0xAB} \\
+      9(\%rax,\%rdx) & \ans{0x11} \\
+    260(\%rcx,\%rdx) & \ans{0x13} \\
+      0xFC(,\%rcx,4) & \ans{0xFF} \\
+     (\%rax,\%rdx,4) & \ans{0x11} \\
+  \end{tabular}
+\end{center}
+
+
+
+%%==========================
+\section{Копирование данных}
+%%==========================
+{\small\ttfamily\begin{longtable}[l]{@{}lll>{\rmfamily}l@{}}
+  \toprule
+  \multicolumn{2}{@{}l}{\textrm{Инструкция}} & \textrm{Действие}  & Пояснение \\
+  \endfirsthead
+  \midrule
+  \textbf{mov}   & S,D & D \(\leftarrow\) S & скопировать \\
+          movb   &     &                    & \phantom{скопировать} байт \\
+          movw   &     &                    & \phantom{скопировать} слово \\
+          movl   &     &                    & \phantom{скопировать} двойное слово \\
+          movq   &     &                    & \phantom{скопировать} четверное слово \\
+  movabsq        & I,R & R \(\leftarrow\) I & \\[0.5em]
+
+  \textbf{movz}  & S,R & R \(\leftarrow\) \textrm{ZeroExtend(\texttt{S})} & скопировать и расширить без~учёта знака \\
+          movzbw &     &  & \\
+          movzbl &     &  & \\
+          movzwl &     &  & \\
+          movzbq &     &  & \\
+          movzwq &     &  & \\[0.5em]
+
+  \textbf{movs}  & S,R & R \(\leftarrow\) \textrm{SignExtend(\texttt{S})} & скопировать и расширить с~учётом знака \\
+          movsbw &     &  & \\
+          movsbl &     &  & \\
+          movswl &     &  & \\
+          movsbq &     &  & \\
+          movswq &     &  & \\
+          movslq &     &  & \\
+  cltq           &     & \%rax \(\leftarrow\) \textrm{SignExtend(\texttt{\%eax})} & \\
+  \bottomrule
+\end{longtable}}
+
+
+
+%%=================
+\paragraph{Пример.}
+%%=================
+Рассмотрим следующий код (\code{move.c}):
+
+\cfile{projects/sem06/move.c}
+
+\noindent Вызвав команду\footnote{Команда-синоним \texttt{asmlst} рассмотрена ранее в~разделе~\ref{alias:asmlst} на~странице~\pageref{alias:asmlst}.}:
+
+\console/$ asmlst move.c/%$
+
+\noindent получим ассемблерный листинг:
+
+\precomment/xp: %rdi, y: %rsi/
+\vspace{-1.7\baselineskip}
+\gasfile[firstline=5, lastline=8]{projects/sem06/move.s}
+
+
+
+%%=====================
+\paragraph{Примечания:}
+%%=====================
+\phantom{some invisible text...}
+
+\smallskip
+\begin{enumerate}
+\item Пользователи \name{Windows} могут отметить, что у~них в~коде аргументы передаются через регистры \code{\%rcx} и \code{\%rdx}. Это связано с~тем, что разные платформы могут использовать разные соглашения. Чтобы получить листинг в~соглашениях, принятых в~\name{Unix}, добавьте ключ \code{-mabi=sysv}:
+
+\console/$ asmlst -mabi=sysv move.c/%$
+
+\item В~\name{Linux} тип \code{long} означает длинное целое число (8~байт), а под~\name{Windows} это обычное целое число (4~байта). Используйте здесь и далее \code{long}~\code{long} или \code{int64\_t} из~библиотеки \code{<inttypes.h>}.
+\end{enumerate}
+
+
+
+%%===================================
+\section{Работа с~программным стеком}
+%%===================================
+\begin{flushleft}\small\ttfamily\begin{tabular}[l]{@{}lll>{\rmfamily}l@{}}
+  \toprule
+  \multicolumn{2}{@{}l}{\textrm{Инструкция}} & \textrm{Действие}  & Пояснение \\
+  \midrule
+  pushq & S & R[\%rsp]    \(\leftarrow\) R[\%rsp] - 8; & поместить в~стек четверное слово \\
+        &   & M[R[\%rsp]] \(\leftarrow\) S             & \\[0.5em]
+
+  popq  & D & D        \(\leftarrow\) M[R[\%rsp]];  & взять из~стека четверное слово \\
+        &   & R[\%rsp] \(\leftarrow\) R[\%rsp] + 8  & \\
+  \bottomrule
+\end{tabular}\end{flushleft}
+
+Чтобы разместить в~стеке четверное слово, необходимо вначале уменьшить указатель стека на~8, а затем записать целевое значение по~новому адресу вершины стека. Таким образом, поведение инструкции \code{pushq~\%rbp} эквивалентно следующей паре инструкций:
+\begin{gascode}
+  subq $8, %rsp      # decrement stack pointer
+  movq %rbp, (%rsp)  # store %rbp on stack
+\end{gascode}
+
+\noindent за~исключением того, что инструкция \code{pushq} представляется в~машинном коде всего лишь одним байтом, в~то время как пара инструкций, представленных выше, требует 8~байт.
+
+Чтобы изъять четверное слово из~стека, необходимо вначале прочитать его с~вершины стека, а затем увеличить указатель стека на~8. Таким образом, инструкция \code{popq~\%rax} эквивалентна следующей паре инструкций:
+\begin{gascode}
+  movq (%rsp), %rax  # read %rax from stack
+  addq $8, %rsp      # increment stack pointer
+\end{gascode}
+
+
+
+%%================
+\WhatToReadSection
+%%================
+\citeauthor[глава~3, стр.~197--209]{Bryant:2022:ru}
+
+
+
+%%===============
+\ExercisesSection
+%%===============
+\begin{exercise}
+\item Заполните пропущенные суффиксы команды \code{mov}, основываясь на~размере операндов:
+{\newcommand*{\ans}{\ansvw}
+\begin{gascode*}{texcl}
+  mov  %eax, (%rsp)        # \ans{l}
+  mov  (%rax), %dx         # \ans{w}
+  mov  $0xFF, %bl          # \ans{b}
+  mov  (%rsp,%rdx,4), %dl  # \ans{b}
+  mov  (%rdx), %rax        # \ans{q}
+  mov  %dx, (%rax)         # \ans{w}
+\end{gascode*}
+}
+
+
+\item Каждая из~следующих строк вызывает ошибку ассемблера. Поясните, в~чём проблема.
+\begin{gascode}
+  movb $0xF, (%ebx)
+  movl %rax, (%rsp)
+  movw (%rax), 4(%rsp)
+  movb %al, %sl
+  movq %rax, $0x123
+  movl %eax, %rdx
+  movb %si, 8(%rbp)
+\end{gascode}
+
+
+\item Предположим, что переменные \code{sp} и \code{dp} объявлены как:
+\begin{ccode*}{linenos=false}
+src_t  *sp;
+dest_t *dp;
+\end{ccode*}
+где \code{src\_t} и \code{dest\_t} некоторые типы данных, объявленные при~помощи \code{typedef}. Мы хотим использовать инструкции копирования, чтобы реализовать операцию:
+
+\cc/*dp = (dest_t) *sp;/
+
+Положим, что значения \code{sp} и \code{dp} размещены в~регистрах \code{\%rdi} и \code{\%rsi}, соответственно. Для каждой записи в~таблице выпишите две инструкции, которые реализуют указанную операцию присваивания. Первая инструкция должна читать данные из~памяти, выполнять требуемое преобразование и записывать соответствующую часть регистра \code{\%rax}. Вторая инструкция затем должна записать эту часть регистра обратно в~память. В~обоих случаях частями могут быть \code{\%rax}, \code{\%eax}, \code{\%ax}, \code{\%al}, и они могут отличаться друг от~друга.
+
+Помните, что при~выполнении преобразования в~\lang{C}, которое включает и изменение размера, и изменение <<знаковости>>, операция должна сначала изменить размер.
+
+\begin{flushleft}\noindent\ttfamily\small
+\newcommand*{\w}{12em}%
+\newcommand*{\ans}{\ansfw{\w}}%
+\begin{tabular}{@{}lll@{}}
+  src\_t & dest\_t & \textrm{Инструкция} \\
+  \midrule
+  long          & long          & \ansfw*{\w}{movq (\%rdi), \%rax} \\
+                &               & \ansfw*{\w}{movq	\%rax, (\%rsi)} \\
+
+  char          & int           & \ans{movsbl (\%rdi), \%eax} \\
+                &               & \ans{movl   \%eax, (\%rsi)} \\
+
+  char          & unsigned      & \ans{movsbl (\%rdi), \%eax} \\
+                &               & \ans{movl   \%eax, (\%rsi)} \\
+
+  unsigned char & long          & \ans{movzbq (\%rdi), \%rax} \\
+                &               & \ans{movq   \%rax, (\%rsi)} \\
+
+  int           & char          & \ans{movl (\%rdi), \%eax} \\
+                &               & \ans{movb \%al, (\%rsi)} \\
+
+  unsigned      & unsigned char & \ans{movl (\%rdi), \%eax} \\
+                &               & \ans{movb \%al, (\%rsi)} \\
+
+  char          & short         & \ans{movsbw (\%rdi), \%ax} \\
+                &               & \ans{movw   \%ax, (\%rsi)} \\
+\end{tabular}\end{flushleft}
+
+
+\item Функция имеет прототип:
+
+\cc/void decode (long *xp, long *yp, long *zp);/
+
+и компилируется в~ассемблерный код, приведённый ниже:
+
+\precomment/xp: %rdi, yp: %rsi, zp: %rdx/
+\vspace{-0.7\baselineskip}
+\gasfile[firstline=5, lastline=12]{projects/sem06/decode.s}
+
+Параметры \code{xp}, \code{yp} и \code{zp} хранятся в~регистрах \code{\%rdi}, \code{\%rsi} и \code{\%rdx}, соответственно. Выпишите эквивалентный исходный~\lang{C} код для~функции \code{decode}.
+
+\end{exercise}
