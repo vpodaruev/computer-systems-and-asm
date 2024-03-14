@@ -1,0 +1,288 @@
+% !TEX encoding   = UTF8
+% !TEX spellcheck = ru_RU
+% !TEX root = ../seminars.tex
+
+%%============================================
+\chapter{Арифметические и логические операции}
+%%============================================
+Большинство арифметических и логических операций образуют семейства инструкций в~зависимости от~размеров операндов (байт, слово, двойное слово, четверное слово). Исключение составляет инструкция \code{leaq}, у~неё единственный вариант. (Почему?)
+
+\begin{flushleft}\label{tab:cmd:arithlogic}\small\ttfamily\begin{tabular}{@{}lll>{\rmfamily}l@{}}
+  \toprule
+  \multicolumn{2}{@{}l}{\textrm{Инструкция}} & \textrm{Действие} & Пояснение \\
+  \midrule
+  leaq & S,R & R \(\leftarrow\) \&S & загрузить действительный адрес \\[0.5em]
+
+  \textbf{inc} & D & D \(\leftarrow\) D + 1 & увеличить на~\code{1} \\
+  \textbf{dec} & D & D \(\leftarrow\) D - 1 & уменьшить на~\code{1} \\
+  \textbf{neg} & D & D \(\leftarrow\) -D    & изменить знак \\
+  \textbf{not} & D & D \(\leftarrow\) \textasciitilde{}D & дополнить до~единиц (поразрядное~\code{НЕ}) \\[0.5em]
+
+  \textbf{add}  & S,D & D \(\leftarrow\) D + S  & сложить \\
+  \textbf{sub}  & S,D & D \(\leftarrow\) D - S  & вычесть \\
+  \textbf{imul} & S,D & D \(\leftarrow\) D * S  & умножить \\
+  \textbf{xor}  & S,D & D \(\leftarrow\) D \textasciicircum{} S & поразрядное \texttt{ИСКЛЮЧАЮЩЕЕ}~\texttt{ИЛИ} \\
+  \textbf{or}   & S,D & D \(\leftarrow\) D | S  & поразрядное~\code{ИЛИ} \\
+  \textbf{and}  & S,D & D \(\leftarrow\) D \& S & поразрядное~\code{И} \\[0.5em]
+
+  \textbf{sal} & k,D & D \(\leftarrow\) D << k     & сдвиг влево \\
+  \textbf{shl} & k,D & D \(\leftarrow\) D << k     & сдвиг влево (то же, что и \code{sal}) \\
+  \textbf{sar} & k,D & D \(\leftarrow\) D >>\(_A\) k & арифметический сдвиг вправо \\
+  \textbf{shr} & k,D & D \(\leftarrow\) D >>\(_L\) k & логический сдвиг вправо \\
+  \bottomrule
+\end{tabular}\end{flushleft}
+
+
+
+%%=======================================
+\section{Загрузка действительного адреса}
+%%=======================================
+Пусть регистры \code{\%rbx} и \code{\%rdx} хранят значения~\(p\) и~\(q\) соответственно. Заполните таблицу формулами, выражающими значение, которое будет записано в~регистр \code{\%rax}:
+
+\begin{flushleft}\newcommand*{\ans}{\ansfw{2.0cm}}\ttfamily\small\begin{tabular}{@{}ll@{}}
+  \textrm{Инструкция} & \textrm{Результат} \\
+  \midrule
+  leaq 9(\%rdx), \%rax         & \ans{\(9 + q\)} \\
+  leaq (\%rdx,\%rbx), \%rax    & \ans{\(q + p\)} \\
+  leaq (\%rdx,\%rbx,4), \%rax  & \ans{\(q + 4p\)} \\
+  leaq 2(\%rbx,\%rbx,8), \%rax & \ans{\(2 + 9p\)} \\
+  leaq 0xE(,\%rdx,2), \%rax    & \ans{\(14 + 2q\)} \\
+  leaq 6(\%rbx,\%rdx,8), \%rax & \ans{\(6 + p + 8q\)} \\
+\end{tabular}\end{flushleft}
+
+
+
+%%===================================
+\section{Унарные и бинарные операции}
+%%===================================
+Положим, что в~перечисленных ниже адресах памяти и регистрах сохранены указанные значения.
+
+Заполните таблицу, указывая регистр или место в~памяти, которые будут изменены в~результате отдельного выполнения каждой инструкции, а также результирующее значение.
+
+\begin{flushleft}
+  \small\ttfamily
+  \begin{tabular}[t]{@{}ll@{}}
+    \textrm{Адрес} & \textrm{Значение} \\
+    \midrule
+    0x100 & 0xFF \\
+    0x108 & 0xAB \\
+    0x110 & 0x13 \\
+    0x118 & 0x11 \\[0.8em]
+
+    \textrm{Регистр} & \textrm{Значение} \\
+    \midrule
+    \%rax & 0x100 \\
+    \%rcx &   0x1 \\
+    \%rdx &   0x3 \\
+  \end{tabular}\hfill
+  %
+  \newcommand*{\ans}{\ansfw{1.3cm}}%
+  %
+  \begin{tabular}[t]{@{}lll@{}}
+    \textrm{Инструкция} & \textrm{Адрес назначения} & \textrm{Значение} \\
+    \midrule
+    addq \%rcx, (\%rax)         & \ans{0x100} & \ans{0x100} \\
+    subq \%rdx, 8(\%rax)        & \ans{0x108} & \ans{0xA8} \\
+    imulq \$16, (\%rax,\%rdx,8) & \ans{0x118} & \ans{0x110} \\
+    incq 16(\%rax)               & \ans{0x110} & \ans{0x14} \\
+    decq \%rcx                  & \ans{\%rcx} & \ans{0x0} \\
+    subq \%rdx, \%rax           & \ans{\%rax} & \ans{0xFD} \\
+  \end{tabular}
+\end{flushleft}
+
+
+
+%%======================
+\section{Сдвиг разрядов}
+%%======================
+Ниже приведены~\lang{C} функция:
+
+\cfile{projects/sem07/shift.c}
+
+\noindent и часть её ассемблерного кода, которая выполняет сдвиги и сохраняет результирующее значение в~регистре \code{\%rax}:
+
+{\newcommand*{\ans}{\ansfw{3.45cm}}%
+\precomment/x: %rdi, n: %rsi/
+\vspace{-1.7\baselineskip}
+\begin{gascode*}{escapeinside=||}
+  movq %rdi, %rax  # get x
+  |\ans{salq \$4, \%rax}|  # x <<= 4
+  movl %esi, %ecx  # get n
+  |\ans{sarq \%cl, \%rax}|  # x >>= n
+\end{gascode*}
+}
+
+\noindent Здесь опущены две ключевых инструкции. Выпишите их, опираясь на~комментарии. Сдвиг вправо следует выполнить арифметически.
+
+
+%%==============
+\section{Пример}
+%%==============
+Рассмотрим код на~\lang{C}, содержащий арифметические вычисления (\code{arith.c}):
+
+\cfile{projects/sem07/arith.c}
+
+\noindent Вызвав \GCC\footnote{Команда-синоним \texttt{asmlst} рассмотрена ранее в~разделе~\ref{alias:asmlst} на~странице~\pageref{alias:asmlst}.}:
+
+\console/$ asmlst arith.c/%$
+
+\noindent получим из~него ассемблерный листинг:
+
+\precomment/x: %rdi, y: %rsi, z: %rdx/
+\vspace{-1.7\baselineskip}
+\gasfile[firstline=5, lastline=11]{projects/sem07/arith.s}
+
+
+
+%%===========================================
+\section{Специальные арифметические операции}
+%%===========================================
+\begin{flushleft}\small\ttfamily\begin{tabular}{@{}lll>{\rmfamily}l@{}}
+  \toprule
+  \multicolumn{2}{@{}l}{\textrm{Инструкция}} & \textrm{Действие}  & Пояснение \\
+  \midrule
+  imulq & S & R[\%rdx]R[\%rax] \(\leftarrow\) S \texttimes{} R[\%rax] & полное произведение с~учётом знака \\
+  mulq  & S & R[\%rdx]R[\%rax] \(\leftarrow\) S \texttimes{} R[\%rax] & полное произведение без~учёта знака \\[0.5em]
+
+  cqto  &   & R[\%rdx]R[\%rax] \(\leftarrow\) \textrm{SignExtend(\texttt{R[\%rax]})} & расширить до~восьмикратного слова \\[0.5em]
+
+  idivq & S & R[\%rdx] \(\leftarrow\) R[\%rdx]R[\%rax] mod S & деление с~учётом знака \\
+        &   & R[\%rax] \(\leftarrow\) R[\%rdx]R[\%rax] \textdiv{} S & \\[0.5em]
+
+  divq  & S & R[\%rdx] \(\leftarrow\) R[\%rdx]R[\%rax] mod S & деление без~учёта знака \\
+        &   & R[\%rax] \(\leftarrow\) R[\%rdx]R[\%rax] \textdiv{} S & \\
+  \bottomrule
+\end{tabular}\end{flushleft}
+
+
+
+\paragraph{Примеры.} Рассмотрим следующий код (\code{store\_uprod.c}):
+
+\cfile{projects/sem07/store_uprod.c}
+
+\noindent Используя команду:
+
+\console/$ asmlst store_uproduct.c/%$
+
+\noindent получим ассемблерный листинг. Компилятор использует команду умножения без~учёта знака с~одним аргументом и извлекает результат из~соответствующих регистров:
+
+\precomment/dest: %rdi, x: %rsi, y: %rdx/
+\vspace{-1.6\baselineskip}
+\gasfile[firstline=5, lastline=10]{projects/sem07/store_uprod.s}
+
+
+Теперь рассмотрим код, использующий деление (\code{remdiv.c}):
+
+\cfile{projects/sem07/remdiv.c}
+
+\noindent Как и ранее, вызвав команду:
+
+\console/$ asmlst remdiv.c/%$
+
+\noindent получим ассемблерный листинг. Видно, что компилятор использует команду деления, предварительно заполнив соответствующие регистры:
+
+\precomment/x: %rdi, y: %rsi, qp: %rdx, rp: %rcx/
+\vspace{-1.7\baselineskip}\label{example:asm:remdiv}
+\gasfile[firstline=5, lastline=12]{projects/sem07/remdiv.s}
+
+
+
+%%================
+\WhatToReadSection
+%%================
+\citeauthor[глава~3, стр.~209--217]{Bryant:2022:ru}
+
+
+
+%%===============
+\ExercisesSection
+%%===============
+\begin{exercise}
+\item Дана функция, в~которой опущено вычисляемое выражение:
+
+\begin{ccode}
+long scale (long x, long y, long z)
+{
+  long t = |\ansvw{5*x + 2*y + 8*z}|;
+  return t;
+}
+\end{ccode}
+
+и её ассемблерный код:
+
+\precomment/x: %rdi, y: %rsi, z: %rdx/
+\vspace{-0.6\baselineskip}
+\gasfile[firstline=5, lastline=9]{projects/sem07/scale.s}
+
+Выпишите пропущенное в~\lang{C} коде выражение.
+
+
+\item Ниже приведены \lang{C} функция:
+
+{\newcommand*{\ans}[1]{\ansfw{1.6cm}{#1}}
+\begin{ccode*}{escapeinside=//}
+long arith2 (long x, long y, long z)
+{
+  long t1 = /\ans{x | y}/;
+  long t2 = /\ans{t1 >> 3}/;
+  long t3 = /\ans{\textasciitilde{}t2}/;
+  long t4 = /\ans{z \textendash{} t3}/;
+  return t4;
+}
+\end{ccode*}
+}
+и ассемблерный код её тела:\enlargethispage{1\baselineskip}
+
+\precomment/x: %rdi, y: %rsi, z: %rdx/
+\vspace{-0.6\baselineskip}
+\gasfile[firstline=5, lastline=11]{projects/sem07/arith2.s}
+
+Основываясь на~приведённом коде, восстановите инструкции тела~\lang{C} функции.
+
+
+\item В~ассемблерном коде, полученном из~\lang{C}, часто можно обнаружить строки вида:
+
+\gas/xorq  %rcx, %rcx/
+
+хотя в~исходном коде никаких операций \code{ИСКЛЮЧАЮЩЕЕ}~\code{ИЛИ} нет.
+
+\begin{enumIssue}
+\item Объясните действие данной инструкции. Какую полезную операцию она реализует?
+
+\item Каким образом можно нагляднее выразить эту операцию в~ассемблерном коде?
+
+\item Сравните количество байт, необходимое для~кодирования этих двух реализаций одной и той же операции.
+\end{enumIssue}
+
+
+\item Рассмотрим код функции на~\lang{C}, который вычисляет 128-битное произведение двух 64-битных значений~$x$ и~$y$, а затем сохраняет результат в~память:
+
+\cfile{projects/sem07/store_prod.c}
+
+Ниже показан ассемблерный код, который \GCC{} выдаёт для~этой функции:
+
+\precomment/dest: %rdi, x: %rsi, y: %rdx/
+\vspace{-0.6\baselineskip}
+\gasfile[firstline=5, lastline=20]{projects/sem07/store_prod.s}
+
+Этот код использует три умножения для~арифметики с~многократно увеличенной точностью, требуемой для~реализации 128-разрядной арифметики на~64-разрядной машине. Опишите алгоритм, который используется для~вычисления произведения, и прокомментируйте ассемблерный код, чтобы показать, как он реализует этот алгоритм.
+
+\smallskip
+\emph{Подсказка}: при~расширении аргументов~\(x\) и~\(y\) до~128 бит, их можно представить как:
+\[
+  x = 2^{64}\cdot x_h + x_l\quad \text{и}\quad y = 2^{64}\cdot y_h + yl,
+\]
+где \(x_h\), \(x_l\), \(y_h\) и \(y_l\) являются 64-битными значениями. Подобным образом 128-битное произведение может быть записано как:
+\[
+  p = 2^{64}\cdot p_h + p_l,
+\]
+где \(p_h\) и \(p_l\) являются 64-битными значениями. Покажите, как вычисляются значения \(p_h\) и \(p_l\) через значения \(x_h\), \(x_l\), \(y_h\) и \(y_l\).
+
+
+\item Рассмотрим следующую функцию, которая вычисляет частное и остаток от~деления двух 64-битных целых чисел без~знака:
+
+\cfile{projects/sem07/uremdiv.c}
+
+Реализуйте эту функцию, взяв за~основу ассемблерный код для~деления чисел со~знаком, приведённый в~качестве примера на~странице~\pageref{example:asm:remdiv}.
+
+\end{exercise}
