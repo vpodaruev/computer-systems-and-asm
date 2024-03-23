@@ -1,0 +1,12 @@
+  4003fa:	74 02                	je     XXXXXX  |\ansx{\hfill\# Ответ: 4003fe}|
+  4003fc:	ff d0                	callq  *%rax
+
+  40042f:	74 f4                	je     XXXXXX  |\ansx{\hfill\# Ответ: 400425}|
+  400431:	5d                   	pop    %rbp
+
+  XXXXXX:	77 02                	ja     400547  |\ansx{\hfill\# Ответ: 400543}|
+  XXXXXX:	5d                   	pop    %rbp
+
+  4005e8:	e9 73 ff ff ff       	jmpq   XXXXXX  |\ansx{\hfill\# Ответ: 400560}|
+  4005ed:	90                   	nop
+

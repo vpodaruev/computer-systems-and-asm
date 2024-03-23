@@ -1,0 +1,283 @@
+% !TEX encoding   = UTF8
+% !TEX spellcheck = ru_RU
+% !TEX root = ../seminars.tex
+
+%%=====================================
+\chapter{Управление потоком выполнения}
+%%=====================================
+
+%%=====================
+\section{Флаги условий}
+%%=====================
+В~дополнение к~целочисленным регистрам~ЦП имеет \emph{регистр флагов}, описывающих свойства последней выполненной арифметической или логической операции. Например, предположим, что используется инструкция \code{add} для~выполнения следующей операции:
+
+\cc/int t = a + b;/
+
+\begin{itemfeature}[itemsep=0pt]
+  \item[\code{CF}:] \cinline/Carry Flag = (unsigned)t < (unsigned)a/
+    \hspace{0.5em} Последняя операция породила перенос из~самого старшего бита. Используется для~обнаружения переполнения при~выполнении операций без~учёта знака.
+
+  \item[\code{ZF}:] \cinline/Zero Flag = (t == 0)/
+    \hspace{0.5em} Результатом последней операции стал нуль.
+
+  \item[\code{SF}:] \cinline/Sign Flag = (t < 0)/
+    \hspace{0.5em} В~результате последней операции получено отрицательное значение.
+
+  \item[\code{OF}:] \cinline/Overflow Flag = (a < 0 == b < 0) && (t < 0 != a < 0)/
+    \hspace{0.5em} Последняя операция над~числами с~учётом знака вызвала переполнение~--- отрицательное или положительное.
+\end{itemfeature}
+
+Инструкция \code{leaq} не~изменяет никакие флаги, поскольку подразумевает использование в~адресной арифметике. Остальные операции, приведённые в~таблице на~странице~\pageref{tab:cmd:arithlogic}, производят установку флагов. Логические операции, такие как \code{xor}, устанавливают флаги переноса и переполнения в~нуль. Операции сдвига устанавливают флаг переноса в~значение последнего <<вытесненного>> бита, а флаг переполнения в~нуль. Инструкции \code{inc} и \code{dec} устанавливают флаг переполнения и флаг нуля, но флаг переноса оставляют без~изменений.
+
+В~дополнение к~упомянутым арифметическим и логическим инструкциям есть ещё две инструкции, которые выставляют флаги, не~меняя при~этом никакие другие регистры.
+
+\begin{flushleft}\small\ttfamily\begin{tabular}{@{}lll>{\rmfamily}l@{}}
+  \toprule
+  \multicolumn{2}{@{}l}{\textrm{Инструкция}} & \textrm{Основана~на}  & Пояснение \\
+  \midrule
+  \textbf{cmp}  &  S\(_1\),S\(_2\)  &  S\(_2\) \textendash{} S\(_1\) & сравнить \\[0.5em]
+
+  \textbf{test} &  S\(_1\),S\(_2\)  &  S\(_1\) \& S\(_2\)            & протестировать \\
+  \bottomrule
+\end{tabular}\end{flushleft}
+
+Вместо непосредственного доступа к~значениям флагов существуют три распространённых способа использовать их. В~зависимости от~комбинаций установленных флагов можно:
+\begin{enumerate*}[label=\arabic*)]
+  \item установить байт в~\code{0} или \code{1},
+  \item перейти к~выполнению другой части программы,
+  \item скопировать данные.
+\end{enumerate*}
+
+
+
+%%=====================
+\paragraph{Примечания:}
+%%=====================
+\phantom{some invisible text...}
+
+\smallskip
+\begin{enumerate}
+  \item Флаг переноса~\code{CF} означает как \emph{перенос} из~старшего разряда, так и \emph{заём}.
+  \item Подробнее о~расстановке флагов командами изложено в~руководстве \cite[A.1 EFLAGS AND INSTRUCTIONS]{Intel-v1:2014:en}.
+\end{enumerate}
+
+
+
+%%==================================
+\section{Установка байта по условию}
+%%==================================
+\begin{flushleft}\small\ttfamily\begin{tabular}{@{}llll>{\rmfamily}l@{}}
+  \toprule
+  \multicolumn{2}{@{}l}{\textrm{Инструкция}} & \textrm{Синоним} & \textrm{Действие} & Условие \\
+  \midrule
+  sete   &  D  & setz  & D \(\leftarrow\) ZF & равно/нуль \\
+  setne  &  D  & setnz & D \(\leftarrow\) \textasciitilde{}ZF & не~равно/не~нуль \\[0.5em]
+
+  sets   &  D  &       & D \(\leftarrow\) SF & отрицательное \\
+  setns  &  D  &       & D \(\leftarrow\) \textasciitilde{}SF & неотрицательное \\[0.5em]
+
+  setg   &  D  & setnle & D \(\leftarrow\) \textasciitilde{}(SF \textasciicircum{} OF) \& \textasciitilde{}ZF & больше (знаковое \(>\)) \\
+  setge  &  D  & setnl  & D \(\leftarrow\) \textasciitilde{}(SF \textasciicircum{} OF) & больше или равно (знаковое \(\geqslant\)) \\
+  setl   &  D  & setnge & D \(\leftarrow\) SF \textasciicircum{} OF                    & меньше (знаковое \(<\)) \\
+  setle  &  D  & setng  & D \(\leftarrow\) (SF \textasciicircum{} OF) | ZF             & меньше или равно (знаковое \(\leqslant\)) \\[0.5em]
+
+  seta   &  D  & setnbe & D \(\leftarrow\) \textasciitilde{}CF \& \textasciitilde{}ZF & выше (беззнаковое \(>\)) \\
+  setae  &  D  & setnb  & D \(\leftarrow\) \textasciitilde{}СF                        & выше или равно (беззнаковое \(\geqslant\)) \\
+  setb   &  D  & setnae & D \(\leftarrow\) СF                                         & ниже (беззнаковое \(<\)) \\
+  setbe  &  D  & setna  & D \(\leftarrow\) CF | ZF                                    & ниже или равно (беззнаковое \(\leqslant\)) \\
+  \bottomrule
+\end{tabular}\end{flushleft}
+
+
+%%=================
+\paragraph{Пример.}
+%%=================
+Код функции, имеющей следующий прототип:
+
+\cc/int comp (data_t a, data_t b);/
+
+\noindent вынуждает компилятор генерировать инструкции семейства \code{set}:
+
+\precomment/a: %rdi, b: %rsi/
+\vspace{-1.4\baselineskip}
+\gasfile[firstline=5, lastline=9]{projects/sem08/comp.s}
+
+
+
+%%=====================
+\paragraph{Упражнение.}
+%%=====================
+Код на \lang{C}:
+
+\cfile[linenos=false, firstline=4, lastline=4]{projects/sem08/comp.c}
+
+\noindent выполняет сравнение аргументов~\code{a} и~\code{b}. Тип аргументов задаётся синонимом \code{data\_t} (через \code{typedef}), а операция сравнения~--- макросом \code{COMP} (через \code{\#define}).
+
+Положим, что значение параметра~\code{a} располагается в~соответствующей части регистра \code{\%rdi} и значение параметра~\code{b}~--- регистра \code{\%rsi}. Определите какой тип \code{data\_t} и операция \code{COMP} могли бы заставить компилятор создать код, приведённый ниже. (Правильных ответов может быть несколько, перечислите все.)
+
+\medskip\noindent
+\begin{enumissue*}[itemjoin=\hfill]
+\item \begin{tabular}[t]{@{}l@{}}
+        \gasinline/cmpl  %esi, %edi/ \\
+        \gasinline/setl  %al/
+      \end{tabular}
+
+\item \begin{tabular}[t]{@{}l@{}}
+        \gasinline/cmpw  %si, %di/ \\
+        \gasinline/setge %al/
+      \end{tabular}
+
+\item \begin{tabular}[t]{@{}l@{}}
+        \gasinline/cmpb  %sil, %dil/ \\
+        \gasinline/setbe %al/
+      \end{tabular}
+
+\item \begin{tabular}[t]{@{}l@{}}
+        \gasinline/cmpq  %rsi, %rdi/ \\
+        \gasinline/setne %al/
+      \end{tabular}
+\end{enumissue*}
+
+
+
+%%=====================
+\paragraph{Упражнение.}
+%%=====================
+Код на~\lang{C}:
+
+\cfile[linenos=false, firstline=4, lastline=4]{projects/sem08/test.c}
+
+\noindent выполняет сравнение аргумента~\code{a} с~нулём. Тип аргумента задаётся синонимом \code{data\_t} (через \code{typedef}), а операция сравнения~--- макросом \code{TEST} (через \code{\#define}). Значение параметра~\code{a} располагается в~соответствующей части регистра \code{\%rdi}. Определите какой тип \code{data\_t} и операция \code{TEST} могли бы заставить компилятор создать код, приведённый ниже. (Правильных ответов может быть несколько, перечислите все.)
+
+\medskip\noindent
+\begin{enumissue*}[itemjoin=\hfill]
+\item \begin{tabular}[t]{@{}l@{}}
+        \gasinline/testq %rdi, %rdi/ \\
+        \gasinline/setge %al/
+      \end{tabular}
+
+\item \begin{tabular}[t]{@{}l@{}}
+        \gasinline/testw %di, %di/ \\
+        \gasinline/sete  %al/
+      \end{tabular}
+
+\item \begin{tabular}[t]{@{}l@{}}
+        \gasinline/testb %dil, %dil/ \\
+        \gasinline/seta  %al/
+      \end{tabular}
+
+\item \begin{tabular}[t]{@{}l@{}}
+        \gasinline/testl %edi, %edi/ \\
+        \gasinline/setle %al/
+      \end{tabular}
+\end{enumissue*}
+
+
+
+%%===========================
+\section{Инструкции перехода}
+%%===========================
+\begin{gascode*}{escapeinside=||}
+  movq  $0, %rax     | \comm{set \%rax to 0} |
+  jmp .L1            | \comm{goto .L1} |
+  movq (%rax), %rax  | \comm{null pointer dereference (skipped)} |
+.L1:
+  popq %rdx          | \comm{jump target} |
+\end{gascode*}
+
+Инструкция \code{jmp .L1} заставляет программу пропустить инструкцию \code{movq} и вместо этого возобновить выполнение, начиная с~инструкции \code{popq}. Во~время генерации объектного кода, ассемблер определяет адреса всех инструкций с~метками и кодирует целевой адрес перехода (значение метки~\code{.L1}) как часть инструкции перехода.
+
+{\small\ttfamily\begin{longtable}[l]{@{}llll>{\rmfamily}l@{}}
+  \toprule
+  \multicolumn{2}{@{}l}{\textrm{Инструкция}} & \textrm{Синоним} & \textrm{Условие} & Пояснение \\
+  \endfirsthead
+  \midrule
+  jmp & метка    & & 1 & прямой переход \\
+  jmp & *операнд & & 1 & косвенный переход \\[0.5em]
+
+  je  & метка & jz   & ZF & равно/нуль \\
+  jne & метка & jnz  & \textasciitilde{}ZF & не~равно/не~нуль \\[0.5em]
+
+  js  & метка &      & SF & отрицательное \\
+  jns & метка &      & \textasciitilde{}SF & неотрицательное \\[0.5em]
+
+  jg  & метка & jnle & \textasciitilde{}(SF \textasciicircum{} OF) \& \textasciitilde{}ZF & больше (знаковое \(>\)) \\
+  jge & метка & jnl  & \textasciitilde{}(SF \textasciicircum{} OF) & больше или равно (знаковое \(\geqslant\)) \\
+  jl  & метка & jnge & SF \textasciicircum{} OF                    & меньше (знаковое \(<\)) \\
+  jle & метка & jng  & (SF \textasciicircum{} OF) | ZF             & меньше или равно (знаковое \(\leqslant\)) \\[0.5em]
+
+  ja  & метка & jnbe & \textasciitilde{}CF \& \textasciitilde{}ZF & выше (беззнаковое \(>\)) \\
+  jae & метка & jnb  & \textasciitilde{}СF                        & выше или равно (беззнаковое \(\geqslant\)) \\
+  jb  & метка & jnae & СF                                         & ниже (беззнаковое \(<\)) \\
+  jbe & метка & jna  & CF | ZF                                    & ниже или равно (беззнаковое \(\leqslant\)) \\
+  \bottomrule
+\end{longtable}}
+
+Инструкция \code{jmp} выполняет безусловный переход. Он может быть \emph{прямым}, когда целевой адрес кодируется как часть инструкции (например, \code{jmp .L1}), или \emph{косвенным}, когда целевой адрес перехода читается из~регистра (например, \code{jmp *\%rax}) или из~памяти (например, \code{jmp *(\%rax)}). Остальные инструкции в~таблице представляют собой условный переход. Суффиксы определяются как и для~семейства инструкций \code{set}.
+
+
+
+%%==========================================
+\subsection{Кодирование инструкций перехода}
+%%==========================================
+Существует несколько способов представления переходов на~машинном уровне. Один из~наиболее часто используемых~--- запомнить смещение \emph{относительно} адреса следующей команды (\textenglish{program counter relative}). Это смещение может быть представлено, используя~1, 2 или~4 байта. Вторым способом является задание <<абсолютного>> адреса, используя~4 байта для~непосредственного указания целевого адреса.
+
+В~качестве примера относительной адресации рассмотрим следующий код:
+
+\gasfile[firstnumber=1, firstline=6, lastline=13]{projects/sem08/branch.s}
+
+Он содержит два перехода: \code{jmp} в~строке~2 прыгает вперёд к~старшим адресам, в~то время как \code{jg} в~строке~7 прыгает назад к~младшим адресам.
+
+Дизассемблерная версия объектного кода:
+
+\objdumpfile[firstnumber=1, firstline=7, lastline=13]{projects/sem08/branch.c-objdump}
+
+В~аннотациях справа дизассемблер приводит целевой адрес инструкции перехода в~строке~2 как~\code{0x8} и в~строке~5 "--- как~\code{0x5} (дизассемблер выводит все числа в~шестнадцатеричной системе счисления). Однако если взглянуть на~второй байт машинного кода, то в~первом случае видим~\code{0x03}. Добавляя это смещение к~\code{0x5}, адресу следующей инструкции, получим целевой адрес~\code{0x8}, равный адресу инструкции в~строке~4.
+
+Аналогично, целевой адрес второй инструкции перехода представляется в~машинном коде как~\code{0xf8} (десятичное~\code{-8}), используя одно-байтовое дополнение до~двух. Добавляя его к~\code{0xd} (десятичное~\code{13}), адресу инструкции в~строке~6, получим~\code{0x5} "--- адрес инструкции в~строке~3.
+
+Эти примеры показывают, что значение счётчика команд при~выполнении относительной адресации равно адресу следующей инструкции, а не~адресу самой инструкции перехода. Это соглашение восходит к~ранним реализациям, когда процессор обновлял счётчик команд перед выполнением инструкции.
+
+Ниже представлена дизассемблерная версия программы после компоновки:
+
+\objdumpfile[firstnumber=1, firstline=93, lastline=98]{projects/sem08/prog.c-objdump}
+
+Инструкции размещены по~смещённым адресам, но кодировка целевых адресов перехода в~строках~2 и~5 осталась той же. Использование относительной адресации для~переходов позволяет выполнять компактное кодирование инструкций (всего~2 байта) и перемещать объектный код в~памяти без~каких-либо изменений.
+
+
+
+%%================
+\WhatToReadSection
+%%================
+\citeauthor[глава~3, стр.~218--225]{Bryant:2022:ru}
+
+
+
+%%===============
+\ExercisesSection
+%%===============
+\begin{exercise}
+\item Ниже приведены фрагменты из~дизассемблерного листинга исполняемого файла. Некоторые детали заменены~\code{X}-ми. Ответьте на~следующие вопросы:
+
+\begin{enumIssue}
+\item Каков целевой адрес инструкции~\code{je}? (Об инструкции \code{callq} ничего знать не~нужно.)
+%
+\objdumpfile[linenos=false, firstline=1, lastline=2, texcl]{projects/sem08/pc-relative.c-objdump}
+
+
+\item Каков целевой адрес инструкции~\code{je}?
+%
+\objdumpfile[linenos=false, firstline=4, lastline=5]{projects/sem08/pc-relative.c-objdump}
+
+
+\item Каковы адреса инструкций~\code{ja} и \code{pop}?
+%
+\objdumpfile[linenos=false, firstline=7, lastline=8]{projects/sem08/pc-relative.c-objdump}
+
+
+\item В~приведённом ниже фрагменте, целевой адрес перехода представлен в~виде~4-х байтового относительного смещения в~формате дополнения до~двух. Байты следуют в~порядке от~младшего к~старшему, отражая обратный порядок байт архитектуры \name{x86-64}. Каков целевой адрес инструкции перехода?
+%
+\objdumpfile[linenos=false, firstline=10, lastline=11]{projects/sem08/pc-relative.c-objdump}
+\end{enumIssue}
+
+\end{exercise}
