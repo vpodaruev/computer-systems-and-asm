@@ -1,0 +1,209 @@
+% !TEX encoding   = UTF8
+% !TEX spellcheck = ru_RU
+% !TEX root = ../seminars.tex
+
+%%=============
+\section{Циклы}
+%%=============
+Язык~\lang{C} предоставляет несколько различных циклов: \code{do-while}, \code{while} и \code{for}. В~машинном коде нет соответствующих инструкций. Вместо этого для~реализации таких конструкций используются комбинации условных и безусловных переходов. \GCC{} и другие компиляторы генерируют код для~реализации циклов, придерживаясь двух основных шаблонов, которые будут рассмотрены ниже.
+
+
+
+%%=================================
+\subsection{Цикл \texttt{do-while}}
+%%=================================
+Общая форма инструкции \code{do-while} в~\lang{C} задаётся шаблоном:
+
+\begin{ccode*}{linenos=false}
+do
+  |\mystyle{body-statement}|
+  while (|\mystyle{test-expr}|);
+\end{ccode*}
+
+\noindent Цикл выполняет тело \mystyle{body-statement}, затем вычисляет условие \mystyle{test-expr} и продолжает работу повторно, пока результатом вычисления условия является не~нуль. Эта форма может быть преобразована в~\code{goto}-версию следующим образом:
+
+\begin{ccode*}{linenos=false}
+loop:
+  |\mystyle{body-statement}|
+  t = |\mystyle{test-expr}|;
+  if (t)
+    goto loop;
+\end{ccode*}
+
+
+
+%%=====================
+\paragraph{Упражнение.}
+%%=====================
+Дана~\lang{C} функция:
+
+\cfile{projects/sem09/loop_do_while.c}
+
+\noindent для~которой \GCC{} генерирует следующий ассемблерный код:
+
+\precomment/x initially in %rdi/
+\vspace{-1.7\baselineskip}
+\gasfile[firstline=5, lastline=15]{projects/sem09/loop_do_while.s}
+
+\begin{enumIssue}
+  \item Какие регистры используются для~хранения значений переменных~\code{x}, \code{y} и~\code{n}?
+  \item Каким образом компилятор устранил необходимость в~указателе~\code{p} и его разыменовании, которое подразумевает наличие в~коде выражения \code{(*p)+=5}?
+  \item Поясните, как ассемблерная версия отображает код на~\lang{C}.
+\end{enumIssue}
+
+
+
+%%==============================
+\subsection{Цикл \texttt{while}}
+%%==============================
+Общая форма инструкции \code{while} в~\lang{C} задаётся шаблоном:
+
+\begin{ccode*}{linenos=false}
+while (|\mystyle{test-expr}|)
+  |\mystyle{body-statement}|
+\end{ccode*}
+
+\noindent Он отличается от~цикла \code{do-while} тем, что \mystyle{test-expr} вычисляется вначале, и цикл может закончится, не~выполнив \mystyle{body-statement} ни~разу. Существует много способов перевода цикла \code{while} в~машинный код, два из~которых используются в~коде, генерируемом \GCC. Оба способа используют ту же структуру, что и для~\code{do-while}, но отличаются реализацией начальной проверки условия.
+
+
+%%===============================================
+\paragraph{Первый способ <<переход в~середину>>.}
+%%===============================================
+\enlargethispage{\baselineskip}
+\begin{ccode*}{linenos=false}
+  goto test;
+loop:
+  |\mystyle{body-statement}|
+test:
+  t = |\mystyle{test-expr}|;
+  if (t)
+    goto loop;
+\end{ccode*}
+
+
+%%=====================
+\paragraph{Упражнение.}
+%%=====================
+Ниже приведена общая структура кода на~\lang{C}:
+
+{\newcommand*{\ans}{\ansfw{10em}}%
+%
+\begin{ccode*}{linenos=false}
+long loop_while (long a, long b)
+{
+  long result = |\ans{0}|;
+  while (|\ans{a > b}|)
+  {
+    result = |\ans{result + (a + b)}|;
+    a = |\ans{a - 1}|;
+  }
+  return result;
+}
+\end{ccode*}
+}
+
+\noindent для~которой \GCC{} выдаёт следующий код:
+
+\precomment/a: %rdi, b: %rsi/
+\vspace{-1.7\baselineskip}
+\gasfile[firstline=5, lastline=15]{projects/sem09/loop_while.s}
+
+\noindent Видно, что компилятор использовал переход-в-середину (\textenglish{jump-to-middle}), применив инструкцию \code{jmp} в~строке~7 для~перехода к~проверке условия, которое начинается с~метки~\code{.L2}. Заполните пропущенные части в~\lang{C} коде.
+
+
+
+%%=================================================
+\paragraph{Второй способ <<защищённый-\code{do}>>.}
+%%=================================================
+Код преобразуется в~форму \code{do-while} и использует условный переход, чтобы пропустить выполнение тела, если условие сразу не~выполняется:
+
+\begin{ccode*}{linenos=false}
+  t = |\mystyle{test-expr}|;
+  if (!t)
+    goto done;
+  do
+    |\mystyle{body-statement}|
+    while (|\mystyle{test-expr}|);
+done:
+\end{ccode*}
+
+
+
+%%=====================
+\paragraph{Упражнение.}
+%%=====================
+Ниже приведена общая структура кода на~\lang{C}:
+
+{\newcommand*{\ans}{\ansfw{6.5em}}%
+%
+\begin{ccode*}{linenos=false}
+long loop_while2 (long a, long b)
+{
+  long result = |\ans{b}|;
+  while (|\ans{b > 0}|)
+  {
+    result = |\ans{result * a}|;
+    b = |\ans{b - a}|;
+  }
+  return result;
+}
+\end{ccode*}
+}
+
+\enlargethispage{1.2\baselineskip}
+\noindent для~которой \GCC{}, запущенный с~ключом \code{-O1}, выдаёт следующий код:
+%
+\precomment/a: %rdi, b: %rsi/
+\vspace{-1.4\baselineskip}
+\gasfile[firstline=5, lastline=17]{projects/sem09/loop_while2.s}
+
+\noindent Видно, что компилятор использовал защищённый-\code{do} (\textenglish{guarded-do}), применив инструкцию \code{jle} в~строке~7 для~пропуска выполнения тела, если условие оказалось невыполненным. Заполните пропущенные части в~\lang{C} коде.
+
+
+
+%%================
+\WhatToReadSection
+%%================
+\citeauthor[глава~3, стр.~225--242]{Bryant:2022:ru}
+
+
+
+%%===============
+\ExercisesSection
+%%===============
+\begin{exercise}
+\item Функция \code{fun\_a} имеет следующую структуру:
+
+{\newcommand*{\ans}{\ansdots}%
+%
+\begin{ccode}
+long fun_a (unsigned long x)
+{
+  long val = 0;
+
+  while (|\ans{x}|)
+  {
+    |\ans{val \textasciicircum{}= x;}|
+    |\ansx{x >>= 1;}|
+  }
+
+  return |\ans{val & 0x1}|;
+}
+\end{ccode}
+}
+
+\GCC{} генерирует для~этой функции ассемблерный код, показанный ниже:
+
+\precomment/x: %rdi/
+\vspace{-0.7\baselineskip}
+\gasfile[firstline=5, lastline=15]{projects/sem09/fun_a.s}
+
+Разберитесь, как работает этот код, и выполните следующее:
+
+\begin{enumIssue}
+\item Определите, какой способ трансляции циклов был использован.
+\item При~помощи ассемблерного кода восстановите пропущенные части в~\lang{C}.
+\item Опишите словами, что вычисляет функция.
+\end{enumIssue}
+
+\end{exercise}

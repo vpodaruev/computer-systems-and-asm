@@ -1,0 +1,218 @@
+% !TEX encoding   = UTF8
+% !TEX spellcheck = ru_RU
+% !TEX root = ../seminars.tex
+
+%%=========================
+\chapter{Ветвления и циклы}
+%%=========================
+
+%%=====================================
+\section{Реализация условных ветвлений}
+%%=====================================
+Общая форма конструкции \code{if-else} в~\lang{C} задаётся шаблоном:
+
+\begin{ccode*}{linenos=false}
+if (|\mystyle{test-expr}|)
+  |\mystyle{then-statement}|
+else
+  |\mystyle{else-statement}|
+\end{ccode*}
+
+\noindent где \mystyle{test-expr} является целочисленным выражением, результатом которого является либо нуль (интерпретируется как \code{false}), либо ненулевое значение (интерпретируется как \code{true}). Выполняется только одна из~ветвей: \mystyle{then-statement} или \mystyle{else-statement}.
+
+Эту форму ассемблер обычно реализует в~виде, который можно изобразить, используя синтаксис~\lang{C}, следующим образом:
+
+\begin{ccode*}{linenos=false}
+  t = |\mystyle{test-expr}|;
+  if (!t)
+    goto false;
+  |\mystyle{then-statement}|
+  goto done;
+false:
+  |\mystyle{else-statement}|
+done:
+\end{ccode*}
+
+
+
+%%=====================
+\paragraph{Упражнение.}
+%%=====================
+Дана~\lang{C} функция:
+
+\cfile[linenos=false]{projects/sem09/if-else/cond.c}
+
+\noindent для~которой \GCC{} генерирует следующий ассемблерный код:
+
+\precomment/a: %rdi, p: %rsi/
+\vspace{-1.6\baselineskip}
+\gasfile[firstline=5, lastline=12]{projects/sem09/if-else/cond.s}
+
+\begin{enumIssue}
+  \item Напишите \code{goto}-версию на~\lang{C}, которая выполняет те же самые вычисления и отражает поток выполнения ассемблерного кода.
+
+  \item Объясните, почему ассемблерный код содержит два условных ветвления, хотя в~исходном коде~\lang{C} только одна ветвь.
+\end{enumIssue}
+
+
+
+%%==============================
+\section{Копирование по~условию}
+%%==============================
+Альтернативной стратегией для~реализации условных ветвлений является пересылка данных по~условию. В~этом подходе вычисляются выражения в~обеих ветвях условного оператора, а затем выбирается одно в~зависимости от~выполнения условия. Такая стратегия имеет смысл только в~ограниченных случаях, но она может быть реализована простой инструкцией \emph{копирования по~условию}, которая имеет более высокую производительность на~современных процессорах.
+
+\begin{flushleft}\small\ttfamily\begin{tabular}{@{}llll>{\rmfamily}l@{}}
+  \toprule
+  \multicolumn{2}{@{}l}{\textrm{Инструкция}} & \textrm{Синоним} & \textrm{Условие} & Пояснение \\
+  \midrule
+  cmove   & S,R & cmovz  &                  ZF & равно/нуль \\
+  cmovne  & S,R & cmovnz & \textasciitilde{}ZF & не~равно/не~нуль \\[0.5em]
+
+  cmovs   & S,R &        &                  SF & отрицательное \\
+  cmovns  & S,R &        & \textasciitilde{}SF & неотрицательное \\[0.5em]
+
+  cmovg   & S,R & cmovnle & \textasciitilde{}(SF \textasciicircum{} OF) \& \textasciitilde{}ZF & больше (знаковое $>$) \\
+  cmovge  & S,R & cmovnl  & \textasciitilde{}(SF \textasciicircum{} OF) & больше или равно (знаковое $\geqslant$) \\
+  cmovl   & S,R & cmovnge & SF \textasciicircum{} OF                    & меньше (знаковое $<$) \\
+  cmovle  & S,R & cmovng  & (SF \textasciicircum{} OF) | ZF             & меньше или равно (знаковое $\leqslant$) \\[0.5em]
+
+  cmova   & S,R & cmovnbe & \textasciitilde{}CF \& \textasciitilde{}ZF & выше (беззнаковое $>$) \\
+  cmovae  & S,R & cmovnb  & \textasciitilde{}СF                        & выше или равно (беззнаковое $\geqslant$) \\
+  cmovb   & S,R & cmovnae & СF                                         & ниже (беззнаковое $<$) \\
+  cmovbe  & S,R & cmovna  & CF | ZF                                    & ниже или равно (беззнаковое $\leqslant$) \\
+  \bottomrule
+\end{tabular}\end{flushleft}
+
+Чтобы понять, как условные операции могут быть реализованы через пересылку данных, рассмотрим следующую общую форму условного выражения с~присваиванием:
+
+\cc/v = |\mystyle{test-expr}| ? |\mystyle{then-expr}| : |\mystyle{else-expr}|;/
+
+Стандартный способ скомпилировать это выражение, используя условные переходы, имеет следующий вид:
+
+\begin{ccode*}{linenos=false}
+  if (!|\mystyle{test-expr}|)
+    goto false;
+  v = |\mystyle{then-expr}|;
+  goto done;
+false:
+  v = |\mystyle{else-expr}|;
+done:
+\end{ccode*}
+
+Этот код содержит две последовательности команд "--- одну для~вычисления \mystyle{then-expr} и вторую для~вычисления \mystyle{else-expr}. Комбинация условных и безусловных переходов гарантирует, что будет выполнена только одна из~этих последовательностей.
+
+Что касается кода, основанного на~пересылке по~условию, то необходимо вычислять оба выражения: \mystyle{then-expr} и \mystyle{else-expr}. Финальный результат выбирается, в~зависимости от~значения \mystyle{test-expr}:
+
+\begin{ccode*}{linenos=false}
+  v  = |\mystyle{then-expr}|;
+  ve = |\mystyle{else-expr}|;
+  t  = |\mystyle{test-expr}|;
+  if (!t) v = ve;
+\end{ccode*}
+
+Последняя строка этого кода реализуется операцией пересылки по~условию: зачение~\code{ve} копируется в~\code{v}, только если условие~\code{t} не~выполняется.
+
+Не~все условные выражения могут быть скомпилированы, используя пересылку данных по~условию. Если одно из~выражений условного оператора может вызывать ошибку или имеет побочные эффекты, такой код может привести к~ошибочному поведению:
+
+\cc/long cread (long *xp)  { return xp ? *xp : 0; }/
+
+Использование пересылки по~условию не~всегда повышает производительность кода. Компиляторы должны принимать во~внимание соотношение затрат на~ненужные вычисления и стоимости ошибки в~предсказании перехода (потери на~перезапуск конвейера).
+
+
+
+%%=====================
+\paragraph{Упражнение.}
+%%=====================
+Ниже приведена функция на~\lang{C}, в~которой определение операции~\code{OP} не~завершено:
+
+\begin{ccode}
+#define OP _____  /* Unknown operator */
+long arith (long x)  { return x OP 8; }  |\ansx{\hfill\# Ответ: /}|
+\end{ccode}
+
+\noindent При~компиляции \GCC{} генерирует следующий ассемблерный код:
+
+\precomment/x: %rdi/
+\vspace{-1.6\baselineskip}
+\gasfile[firstline=5, lastline=10]{projects/sem09/if-expr/arith.s}
+
+\begin{enumIssue}
+  \item Что использовано в~качестве операции~\code{OP}?
+  \item Объясните, как работает этот код.
+\end{enumIssue}
+
+
+
+%%===============
+\ExercisesSection
+%%===============
+\begin{exercise}
+
+\item Компилируя код на~\lang{C} вида:
+{\newcommand*{\ans}{\ansfw{5.5em}}%
+\begin{ccode}
+long test (long x, long y, long z)
+{
+  long val = |\ans{z + y - x}|;
+
+  if (|\ans{z > 5}|)
+  {
+    if (|\ans{y > 2}|)
+      val = |\ans{x * z}|;
+    else
+      val = |\ans{x * y}|;
+  }
+  else if (|\ans{z < 3}|)
+    val = |\ans{y * z}|;
+
+  return val;
+}
+\end{ccode}
+}
+\GCC{} генерирует следующий ассемблерный листинг:
+
+\precomment/x: %rdi, y: %rsi, z: %rdx/
+\vspace{-0.6\baselineskip}
+\gasfile[firstline=5, lastline=25]{projects/sem09/if-else/test.s}
+
+Заполните пропущенные в~\lang{C} коде выражения.
+
+
+
+\item Компилируя код на~\lang{C} вида:
+{\newcommand*{\ans}{\ansfw{4.5em}}%
+\begin{ccode}
+long test (long x, long y)
+{
+  long val = |\ans{12 + y}|;
+
+  if (|\ans{x < 0}|)
+  {
+    if (|\ans{x < y}|)
+      val = |\ans{y - x}|;
+    else
+      val = |\ans{y \& x}|;
+  }
+  else if (|\ans{y > 10}|)
+    val = |\ans{x + y}|;
+
+  return val;
+}
+\end{ccode}
+}
+\GCC{}, запущенный с~ключом \code{-O1}, генерирует следующий ассемблерный листинг:\enlargethispage{1\baselineskip}
+
+\precomment/x: %rdi, y: %rsi/
+\vspace{-0.6\baselineskip}
+% asmlst -fif-conversion test.c
+\gasfile[firstline=5, lastline=20]{projects/sem09/if-expr/test.s}
+
+Заполните пропущенные в~\lang{C} коде выражения.
+
+\end{exercise}
+
+
+
+%%=================
+\input{sem09/loops}
+%%=================
