@@ -1,0 +1,239 @@
+% !TEX encoding   = UTF8
+% !TEX spellcheck = ru_RU
+% !TEX root = ../seminars.tex
+
+%%=======================================
+\chapter{Ветвления и циклы (продолжение)}
+%%=======================================
+
+%%=========================
+\section{Цикл \texttt{for}}\label{sect:for}
+%%=========================
+Общая форма инструкции \code{for} в~\lang{C} задаётся шаблоном:
+
+\begin{ccode*}{linenos=false}
+for (|\mystyle{init-expr}|; |\mystyle{test-expr}|; |\mystyle{update-expr}|)
+  |\mystyle{body-statement}|
+\end{ccode*}
+
+\noindent Стандарт языка~\lang{C} утверждает (за~одним исключением, освещаемом в~упражнении~\ref{ex:forcontinue}), что поведение такого цикла идентично следующему коду, использующему цикл \code{while}:
+
+\begin{ccode*}{linenos=false}
+|\mystyle{init-expr}|;
+while (|\mystyle{test-expr}|)
+{
+  |\mystyle{body-statement}|
+  |\mystyle{update-expr}|;
+}
+\end{ccode*}
+
+Код, генерируемый \GCC{} для~цикла \code{for}, следует одной из~двух стратегий трансляции, рассмотренных для~цикла \code{while}, в~зависимости от~уровня оптимизации:
+
+\begin{flushleft}\begin{minipage}[t]{0.3\textwidth}
+\begin{ccode*}{label=\textrm{переход-в-середину}, frame=topline, framesep=3\fboxsep, linenos=false}
+  |\mystyle{init-expr}|;
+  goto test;
+loop:
+  |\mystyle{body-statement}|
+  |\mystyle{update-expr}|;
+test:
+  t = |\mystyle{test-expr}|;
+  if (t)
+    goto loop;
+\end{ccode*}
+\end{minipage}\qquad\begin{minipage}[t]{0.3\textwidth}
+\begin{ccode*}{label=\textrm{защищённый-\code{do}}, frame=topline, framesep=3\fboxsep, linenos=false}
+  |\mystyle{init-expr}|;
+  t = |\mystyle{test-expr}|;
+  if (!t)
+    goto done;
+loop:
+  |\mystyle{body-statement}|
+  |\mystyle{update-expr}|;
+  t = |\mystyle{test-expr}|;
+  if (t)
+    goto loop;
+done:
+\end{ccode*}
+\end{minipage}\end{flushleft}
+
+
+
+%%=====================
+\paragraph{Упражнение.}
+%%=====================
+Функция \code{fun\_b} имеет следующую структуру:
+
+{\newcommand*{\ans}{\ansdots}%
+%
+\begin{ccode*}{linenos=false}
+long fun_b (unsigned long x)
+{
+  long val = 0;
+  for (|\ans{long i = 64}|; |\ans{i != 0}|; |\ans{--i}|)
+  {
+    |\ans{val = (val << 1) \textbar (x \& 0x1);}|
+    |\ansx{x >>= 1;}|
+  }
+  return val;
+}
+\end{ccode*}
+}
+
+\noindent \GCC{} генерирует для~этой функции ассемблерный код, показанный ниже:
+
+\precomment/x: %rdi/
+\vspace{-1.7\baselineskip}
+\gasfile[firstline=5, lastline=17]{projects/sem10/fun_b.s} % asmlst -O1 fun_b.c
+
+\noindent Разберитесь, как работает этот код, и выполните следующее:
+\begin{enumIssue}
+\item При~помощи ассемблерного кода восстановите пропущенные части в~\lang{C}.
+%\item Объясните, почему нет ни начальной проверки условия перед выполнением тела цикла, ни прыжка к части кода, которая это делает.
+\item Опишите словами, что вычисляет функция.
+\end{enumIssue}
+
+
+
+%%============================================
+\section{Реализация оператора \texttt{switch}}
+%%============================================
+Оператор \code{switch} обеспечивает множественное ветвление на~основе целочисленного значения и особенно полезен, когда имеется большое количество вариантов. Он не~только делает код на~языке~\lang{C} более читабельным, но также допускает эффективную реализацию на~основе структуры данных, называемой \emph{таблицей переходов}. Таблица переходов~--- это массив, в~котором $i$-ый элемент хранит адрес сегмента кода, реализующего некоторое действие программы, соответствующего $i$-му варианту в~операторе \code{switch}. Для~определения целевого адреса перехода код выполняет обращение к~таблице переходов, используя индекс~$i$. Преимущество использования таблицы переходов перед длинной последовательностью иструкций \code{if-else} в~том, что время на~выполнение переключения не~зависит от~количества вариантов. \GCC{} выбирает метод трансляции оператора \code{switch}, руководствуясь количеством вариантов (\textenglish{cases}) и разреженностью значений \code{case}-меток. Таблицы переходов используются, когда имеется несколько вариантов (например, четыре и более), и они укладываются в~небольшой диапазон значений.
+
+
+
+%%=====================
+\paragraph{Упражнение.}
+%%=====================
+В~функции на~\lang{C}, которая показана ниже, пропущено тело оператора \code{switch}. \code{case}-метки не~образуют непрерывный диапазон, а некоторые варианты имеют несколько меток.
+
+{\newcommand*{\ans}{\ansdots}%
+%
+\begin{ccode*}{linenos=false}
+void switch2 (long x, long *dest)
+{
+  long val = 0;
+  switch (x)
+  {
+    |\textcolor{cyan}{...}  \comm{Body of switch statement omitted}|
+  }
+  *dest = val;
+}
+\end{ccode*}
+}
+
+\noindent При~компиляции этой функции \GCC{} генерирует следующий ассемблерный код для~начальной части процедуры:
+
+\precomment/x: %rdi/
+\vspace{-1.7\baselineskip}
+\begin{gascode}
+switch2:
+  addq  $1, %rdi
+  cmpq  $8, %rdi
+  ja    .L2
+  jmp   *.L4(,%rdi,8)
+\end{gascode}
+
+\noindent а также код для таблицы переходов:
+
+\begin{gascode}
+.L4:
+  .quad  .L9
+  .quad  .L5
+  .quad  .L6
+  .quad  .L7
+  .quad  .L2
+  .quad  .L7
+  .quad  .L8
+  .quad  .L2
+  .quad  .L5
+\end{gascode}
+
+\noindent Опираясь на~эти данные, ответьте:
+\begin{enumIssue}
+\item Какие значения меток были в~операторе \code{switch}?
+\item Какие варианты имеют несколько меток в~\lang{C} коде?
+\end{enumIssue}
+
+
+
+%%================
+\WhatToReadSection
+%%================
+\citeauthor[глава~3, стр.~242--250]{Bryant:2022:ru}
+
+
+
+%%===============
+\ExercisesSection
+%%===============
+\begin{exercise}
+\item\label{ex:forcontinue} Оператор \code{continue} в~\lang{C} заставляет программу перейти в~конец текущей итерации цикла. Изложенное выше правило перевода цикла \code{for} в~цикл \code{while} требует некоторого уточнения, если в~теле цикла встречается этот оператор. Для~примера рассмотрим следующий код:
+
+\begin{ccode}
+/* Example of for-loop containing a continue statement */
+/* Sum even numbers between 0 and 9 */
+long sum = 0;
+
+for (long i = 0; i < 10; ++i)
+{
+  if (i & 1)
+    continue;
+
+  sum += i;
+}
+\end{ccode}
+
+\begin{enumIssue}
+\item Что получится, если наивно применить упомянутое на~странице~\pageref{sect:for} правило перевода цикла \code{for} в~цикл \code{while}? Что будет неверным?
+%
+\item Как следует заменить оператор \code{continue} на~оператор \code{goto}, чтобы гарантировать, что цикл \code{while} корректно воспроизводит поведение цикла \code{for}?
+\end{enumIssue}
+
+
+\item Для~функции \code{switcher}, написанной на~\lang{C} и имеющей следующую структуру:
+
+{\newcommand*{\ans}{\ansfw{7.5em}}%
+%
+\begin{ccode}
+void switcher (long a, long b, long c, long *dest)
+{
+  long val;
+
+  switch (a)
+  {
+  case |\ans{5}|:      /* Case A */
+    c = |\ans{b \textasciicircum 15}|;
+    /* Fall through */
+
+  case |\ans{0}|:      /* Case B */
+    val = |\ans{c + 112}|;
+    break;
+
+  case |\ans{2}|:      /* Case C */
+  case |\ans{7}|:      /* Case D */
+    val = |\ans{(b + c) << 2}|;
+    break;
+
+  case |\ans{4}|:      /* Case E */
+    val = |\ans{a}|;
+    break;
+
+  default:
+    val = |\ans{b}|;
+  }
+
+  *dest = val;
+}
+\end{ccode}
+}
+
+\GCC{}, запущенный с~ключом \code{-fno-pie}, генерирует ассемблерный код и таблицу переходов, как показано ниже:\label{ex:jumptable}
+
+\precomment/a: %rdi, b: %rsi, c: %rdx, d: %rcx/
+\vspace{-0.6\baselineskip}
+\gasfile[firstline=5, lastline=36]{projects/sem10/switcher.s}
+
+Заполните пропущенные части в~\lang{C} коде. Существует только один способ разместить варианты в~шаблоне, за~исключением порядка \code{case}-меток~\code{C} и~\code{D}.
+
+\end{exercise}
