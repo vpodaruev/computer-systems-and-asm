@@ -53,15 +53,6 @@ def ctrl(s):
 
 
 def task(s):
-    def numrepl(m):
-        try:
-            int(m.group(1))
-            return r"\:\mbox{\scriptsize\fbox{" + m.group(1) + r"}}\:"
-        except ValueError:
-            return ""
-
-    s = re.sub(r"([0-9]+)", numrepl, s)
-
     syms = [c.strip() for c in s.split()]
     smap = {
         '+':  (1., r'\(+\)'),

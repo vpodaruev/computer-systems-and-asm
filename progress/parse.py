@@ -16,7 +16,7 @@ def set_rubicon(value):
 
 def numcol(table):
     num = "\\makebox[0.6em][r]{{{}}}"
-    return [(r"\rowcolor{black!5}" if int(x) % 2 == 1 else "") + num.format(x)
+    return [(r"\darkrow" if int(x) % 2 == 1 else "") + num.format(x)
             for x in table.index.values]
 
 
@@ -28,19 +28,30 @@ def filter_score(score):
 
 def print_main(table):
     print(r"""\par\noindent
-    \begin{tabular}{r l l cc l cc}
+    \begin{tabular}{r l l cccc c l cc}
     \toprule
-    & && \multicolumn{2}{c}{контрольно-проверочные мероприятия} && \multicolumn{2}{c}{зачёт} \\
-    \cline{4-5}\cline{7-8}
-    \rule{0pt}{12pt}\makebox[0.6em][r]{№} & Фамилия Имя Отчество && \task{1} & \task{2} && \(\star\) & отметка \\
+    & && \multicolumn{5}{c}{контрольно-проверочные мероприятия} \\
+    \makebox[0.6em][r]{№} & Фамилия Имя Отчество && \multicolumn{4}{c}{\task{1}} & \task{2} && \multicolumn{2}{c}{зачёт} \\
+    \cline{4-7}\cline{10-11}
+    \Hi & && ЛЭ & КА & МТ & ММ & && \(\star\) & отметка \\
     \midrule
     """)
     table.columns = [item.strip() for item in table.columns]
     table = table.transform(lambda col: [x.strip() if type(x) == str else x for x in col])
 
-    m = pd.DataFrame(index=table.index.values,
-                     columns=["name", "|", "task 1", "task 2",
-                              "|", "bonus", "mark"])
+    columns = [
+        "name", "|",
+        "task 1: logic elements",
+        "task 1: finite automata",
+        "task 1: turing machine",
+        "task 1: markov machine",
+        "task 2",
+        "|", "bonus", "mark"
+    ]
+    m = pd.DataFrame(index=table.index.values, columns=columns)
+
+    # filter table
+    table = table[[item for item in table.columns if item in columns]]
 
     m["name"] = table["name"].transform(atom.name)
 
