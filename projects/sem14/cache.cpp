@@ -53,7 +53,7 @@ auto get_order_1 (const std::vector<Data>& data)
 
 auto get_order_2 (const std::vector<Data>& data)
 {
-  std::vector<std::pair<const Data*, size_t>> ord;
+  std::vector<std::pair<const Data*, int>> ord;
   ord.reserve (data.size());
 
   std::transform (data.begin(), data.end(), std::back_inserter(ord),
