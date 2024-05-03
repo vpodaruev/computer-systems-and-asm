@@ -7,13 +7,13 @@
 #include <stdexcept>
 #include <vector>
 
-#include <timer.h>
+#include "timer.h"
 
 
 struct Data
 {
   const int id;
-  std::array<char, 8192> line {};
+  std::array<char, LINE_SIZE> line {};
 
   Data (const int an_id) : id{ an_id }  { }
 };
